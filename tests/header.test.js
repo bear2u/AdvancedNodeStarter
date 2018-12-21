@@ -1,47 +1,34 @@
-const puppeteer = require('puppeteer');
-const sessionFactory = require('./factories/sessionFactory');
-const userFactory = require('./factories/userFactory');
+const Page = require('./helpers/page');
 
-let browser, page;
+let page;
 
-beforeEach( async () => {
-    browser = await puppeteer.launch({
-        headless: false
-    });
-    page = await browser.newPage();
-    await page.goto('localhost:3000');
+beforeEach(async () => {
+  page = await Page.build();
+  await page.goto('http://localhost:3000');
 });
 
 afterEach(async () => {
-    await browser.close();
-})
+  await page.close();
+});
 
 test('the header has the correct text', async () => {
-    
-    const text = await page.$eval('a.brand-logo', el => el.innerHTML);
+  const text = await page.getContentsOf('a.brand-logo');
 
-    expect(text).toEqual('Blogster');
+  expect(text).toEqual('Blogster');
 });
 
 test('clicking login starts oauth flow', async () => {
-    await page.click('.right a');
+  await page.click('.right a');
 
-    const url = await page.url();
+  const url = await page.url();
 
-    expect(url).toMatch(/accounts\.google\.com/)
+  expect(url).toMatch(/accounts\.google\.com/);
 });
 
-test('When sign in, whos logout button', async () => {
-    const user = await userFactory();
-    const { session, sig } = sessionFactory(user);
+test('When signed in, shows logout button', async () => {
+  await page.login();
 
-    await page.setCookie({ name: 'session', value: session });
-    await page.setCookie({ name: 'session.sig', value: sig});
-    await page.goto('localhost:3000');
-    await page.waitFor('a[href="/auth/logout"]');
+  const text = await page.$eval('a[href="/auth/logout"]', el => el.innerHTML);
 
-    //시간차가 발생되서 오류가 생긴다.
-    const text = await page.$eval('a[href="/auth/logout"]', el => el.innerHTML);
-
-    expect(text).toEqual('Logout');
+  expect(text).toEqual('Logout');
 });
